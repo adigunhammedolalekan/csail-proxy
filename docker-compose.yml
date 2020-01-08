@@ -1,0 +1,21 @@
+version: "3.0"
+
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+    volumes:
+      - /Users/adigun/mnt/saas/redis/data:/data
+
+  proxy:
+    build: .
+    ports:
+      - 9093:9093
+      - 80:80
+      - 443:443
+    depends_on:
+      - redis
+    restart: on-failure
+    environment:
+      - REDIS_HOST=redis:6379
