@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-redis/redis/v7"
+	"github.com/mholt/certmagic"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -124,12 +125,21 @@ func (s *proxyServer) extractServiceUrl(r *http.Request) (string, error) {
 }
 
 func Run(addr string) error {
+	serveHttps := os.Getenv("ENV") == "prod"
 	s, err := newRedisStore()
 	if err != nil {
 		return err
 	}
 	handler := newProxyServer(s)
-	srv := &http.Server{Addr: addr, Handler: handler}
-	log.Printf("Proxy server running on %s", addr)
-	return srv.ListenAndServe()
+	if serveHttps {
+		log.Println("started https server!")
+		certmagic.Default.Agreed = true
+		certmagic.Default.Email = "adigunhammed.lekan@gmail.com"
+		certmagic.Default.CA = certmagic.LetsEncryptStagingCA
+		return certmagic.HTTPS([]string{"hostgolang.com", "www.hostgolang.com"}, handler)
+	}else {
+		log.Printf("Proxy server running on %s", addr)
+		srv := &http.Server{Addr: addr, Handler: handler}
+		return srv.ListenAndServe()
+	}
 }
