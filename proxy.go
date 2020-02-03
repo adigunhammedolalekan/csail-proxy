@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-redis/redis/v7"
-	"github.com/mholt/certmagic"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -96,11 +95,17 @@ func (s *proxyServer) handleSet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *proxyServer) proxyHandler(w http.ResponseWriter, r *http.Request)  {
-	serviceUrl, err := s.extractServiceUrl(r)
+	serviceName, err := s.extractServiceUrl(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		return
 	}
+	serviceUrl, err := s.store.Get(serviceName)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	log.Println("Proxying...", serviceUrl)
 	p, err := newReverseProxy(serviceUrl)
 	if err != nil {
 		log.Printf("bad serviceURL: %s", err.Error())
@@ -125,21 +130,12 @@ func (s *proxyServer) extractServiceUrl(r *http.Request) (string, error) {
 }
 
 func Run(addr string) error {
-	serveHttps := os.Getenv("ENV") == "prod"
 	s, err := newRedisStore()
 	if err != nil {
 		return err
 	}
 	handler := newProxyServer(s)
-	if serveHttps {
-		log.Println("started https server!")
-		certmagic.Default.Agreed = true
-		certmagic.Default.Email = "adigunhammed.lekan@gmail.com"
-		certmagic.Default.CA = certmagic.LetsEncryptStagingCA
-		return certmagic.HTTPS([]string{"hostgolang.com", "www.hostgolang.com"}, handler)
-	}else {
-		log.Printf("Proxy server running on %s", addr)
-		srv := &http.Server{Addr: addr, Handler: handler}
-		return srv.ListenAndServe()
-	}
+	log.Printf("Proxy server running on %s", addr)
+	srv := &http.Server{Addr: addr, Handler: handler}
+	return srv.ListenAndServe()
 }

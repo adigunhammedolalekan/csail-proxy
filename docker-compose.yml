@@ -6,7 +6,7 @@ services:
     ports:
       - 6379:6379
     volumes:
-      - /Users/adigun/mnt/saas/redis/data:/data
+      - "${HOME}/mnt/saas/redis/data:/data"
 
   proxy:
     build: .

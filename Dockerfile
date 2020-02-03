@@ -7,5 +7,4 @@ RUN go get ./...
 ENV GOOS linux
 RUN go build -o proxy cmd/cmd.go
 EXPOSE 9093
-RUN ls
 ENTRYPOINT [ "./proxy" ]
